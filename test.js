@@ -5,6 +5,7 @@ const minx = 5;
 const miny = 47;
 const maxx = 15;
 const maxy = 56;
+const pause = 250;
 const districtCodes = ["03459"];
 
-exportStops(urlTemplate, minx, miny, maxx, maxy, districtCodes);
+exportStops(urlTemplate, minx, miny, maxx, maxy, pause, districtCodes);

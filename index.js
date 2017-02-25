@@ -5,7 +5,7 @@ const leftPad = require('left-pad');
 const EPSILON = Math.pow(2, -2);
 const MAX_PINS = 1000;
 
-const queryPins = function(urlTemplate, minx, miny, maxx, maxy) {
+const queryPins = function(urlTemplate, minx, miny, maxx, maxy, pause) {
 	const url = urlTemplate
 		.replace("{minx}", minx)
 		.replace("{miny}", miny)
@@ -13,7 +13,11 @@ const queryPins = function(urlTemplate, minx, miny, maxx, maxy) {
 		.replace("{maxy}", maxy);
 
 	return new Promise(function(resolve, reject){
-		got(url)
+		got(url, {
+			headers: {
+				'Accept' : '*/*'
+			}
+		})
 		.then(response => {
 			const result = JSON.parse(response.body);
 			// console.log("Got " + result.pins.length + " results from " + url + ".");
@@ -22,29 +26,40 @@ const queryPins = function(urlTemplate, minx, miny, maxx, maxy) {
 				resolve(result.pins);
 			} else if (!smallestAllowedBoundingBox)
 			{
-				subqueryPins(urlTemplate, minx, miny, maxx, maxy).then(resolve).catch(reject);
+				possiblyPausedSubqueryPins(resolve, reject, urlTemplate, minx, miny, maxx, maxy, pause);
 			} else {
 				resolve([]);
 			}
 		})
 		.catch(error => {
 			// console.log("Error querying " + url + ", requerying.");
-			subqueryPins(urlTemplate, minx, miny, maxx, maxy).then(resolve).catch(reject);
+			possiblyPausedSubqueryPins(resolve, reject, urlTemplate, minx, miny, maxx, maxy, pause);
 		});
 	});
 };
 
-const subqueryPins = function(urlTemplate, minx, miny, maxx, maxy) {
+const possiblyPausedSubqueryPins = function(resolve, reject, urlTemplate, minx, miny, maxx, maxy, pause) {
+	if (pause && pause > 0) {
+		setTimeout(function() {
+			subqueryPins(urlTemplate, minx, miny, maxx, maxy, pause).then(resolve).catch(reject);
+		}, pause);
+	}
+	else {
+		subqueryPins(urlTemplate, minx, miny, maxx, maxy, pause).then(resolve).catch(reject);
+	}
+};
+
+const subqueryPins = function(urlTemplate, minx, miny, maxx, maxy, pause) {
 
 	return new Promise(function(resolve, reject){
 		const midx = (minx + maxx) / 2;
 		const midy = (miny + maxy) / 2;
 		Promise
 		.all([
-			queryPins(urlTemplate, minx, miny, midx, midy),
-			queryPins(urlTemplate, midx, miny, maxx, midy),
-			queryPins(urlTemplate, minx, midy, midx, maxy),
-			queryPins(urlTemplate, midx, midy, maxx, maxy)
+			queryPins(urlTemplate, minx, miny, midx, midy, pause),
+			queryPins(urlTemplate, midx, miny, maxx, midy, pause),
+			queryPins(urlTemplate, minx, midy, midx, maxy, pause),
+			queryPins(urlTemplate, midx, midy, maxx, maxy, pause)
 		])
 		.then(results => resolve([].concat.apply([], results)))
 		.catch(reject);
@@ -126,8 +141,8 @@ const outputStops = function(stops) {
 	});
 }
 
-const exportStops = function(urlTemplate, minx, miny, maxx, maxy, districtCodes)  {
-	queryPins(urlTemplate, minx, miny, maxx, maxy)
+const exportStops = function(urlTemplate, minx, miny, maxx, maxy, pause, districtCodes)  {
+	queryPins(urlTemplate, minx, miny, maxx, maxy, pause)
 	.then(convertPinsToStops)
 	.then(removeStopsWithoutCoordinates)
 	.then(removeDuplicateStops)
