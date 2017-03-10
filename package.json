@@ -1,7 +1,7 @@
 {
 	"name":         "efa-export-stops-by-coordinates",
 	"description" : "Exports stops from EFA by bounding box coordinates.",
-	"version":      "0.1.0",
+	"version":      "0.2.0",
 	"main":         "index.js",
 	"files":        ["index.js"],
 	"engines" :     {"node": ">=6"},

@@ -3,9 +3,8 @@ const csv = require('csv');
 const leftPad = require('left-pad');
 
 const EPSILON = Math.pow(2, -2);
-const MAX_PINS = 1000;
 
-const queryPins = function(urlTemplate, minx, miny, maxx, maxy, pause) {
+const queryPins = function(urlTemplate, minx, miny, maxx, maxy, pause, maxPins) {
 	const url = urlTemplate
 		.replace("{minx}", minx)
 		.replace("{miny}", miny)
@@ -20,46 +19,47 @@ const queryPins = function(urlTemplate, minx, miny, maxx, maxy, pause) {
 		})
 		.then(response => {
 			const result = JSON.parse(response.body);
-			// console.log("Got " + result.pins.length + " results from " + url + ".");
+			console.log("Got " + result.pins.length + " results from " + url + ".");
 			const smallestAllowedBoundingBox = Math.max(maxx - minx, maxy - miny) <= EPSILON;
-			if (result.pins.length > 0 && (result.pins.length <= MAX_PINS || smallestAllowedBoundingBox)) {
+			if (result.pins.length > maxPins) {
+				possiblyPausedSubqueryPins(resolve, reject, urlTemplate, minx, miny, maxx, maxy, pause, maxPins);
+			} else if (result.pins.length > 0) {
 				resolve(result.pins);
-			} else if (!smallestAllowedBoundingBox)
-			{
-				possiblyPausedSubqueryPins(resolve, reject, urlTemplate, minx, miny, maxx, maxy, pause);
+			} else if (!smallestAllowedBoundingBox) {
+				possiblyPausedSubqueryPins(resolve, reject, urlTemplate, minx, miny, maxx, maxy, pause, maxPins);
 			} else {
 				resolve([]);
 			}
 		})
 		.catch(error => {
-			// console.log("Error querying " + url + ", requerying.");
-			possiblyPausedSubqueryPins(resolve, reject, urlTemplate, minx, miny, maxx, maxy, pause);
+			console.log("Error querying " + url + ", requerying.", error);
+			possiblyPausedSubqueryPins(resolve, reject, urlTemplate, minx, miny, maxx, maxy, pause, maxPins);
 		});
 	});
 };
 
-const possiblyPausedSubqueryPins = function(resolve, reject, urlTemplate, minx, miny, maxx, maxy, pause) {
+const possiblyPausedSubqueryPins = function(resolve, reject, urlTemplate, minx, miny, maxx, maxy, pause, maxPins) {
 	if (pause && pause > 0) {
 		setTimeout(function() {
-			subqueryPins(urlTemplate, minx, miny, maxx, maxy, pause).then(resolve).catch(reject);
+			subqueryPins(urlTemplate, minx, miny, maxx, maxy, pause, maxPins).then(resolve).catch(reject);
 		}, pause);
 	}
 	else {
-		subqueryPins(urlTemplate, minx, miny, maxx, maxy, pause).then(resolve).catch(reject);
+		subqueryPins(urlTemplate, minx, miny, maxx, maxy, pause, maxPins).then(resolve).catch(reject);
 	}
 };
 
-const subqueryPins = function(urlTemplate, minx, miny, maxx, maxy, pause) {
+const subqueryPins = function(urlTemplate, minx, miny, maxx, maxy, pause, maxPins) {
 
 	return new Promise(function(resolve, reject){
 		const midx = (minx + maxx) / 2;
 		const midy = (miny + maxy) / 2;
 		Promise
 		.all([
-			queryPins(urlTemplate, minx, miny, midx, midy, pause),
-			queryPins(urlTemplate, midx, miny, maxx, midy, pause),
-			queryPins(urlTemplate, minx, midy, midx, maxy, pause),
-			queryPins(urlTemplate, midx, midy, maxx, maxy, pause)
+			queryPins(urlTemplate, minx, miny, midx, midy, pause, maxPins),
+			queryPins(urlTemplate, midx, miny, maxx, midy, pause, maxPins),
+			queryPins(urlTemplate, minx, midy, midx, maxy, pause, maxPins),
+			queryPins(urlTemplate, midx, midy, maxx, maxy, pause, maxPins)
 		])
 		.then(results => resolve([].concat.apply([], results)))
 		.catch(reject);
@@ -141,8 +141,8 @@ const outputStops = function(stops) {
 	});
 }
 
-const exportStops = function(urlTemplate, minx, miny, maxx, maxy, pause, districtCodes)  {
-	queryPins(urlTemplate, minx, miny, maxx, maxy, pause)
+const exportStops = function(urlTemplate, minx, miny, maxx, maxy, pause, maxPins, districtCodes)  {
+	queryPins(urlTemplate, minx, miny, maxx, maxy, pause, maxPins)
 	.then(convertPinsToStops)
 	.then(removeStopsWithoutCoordinates)
 	.then(removeDuplicateStops)

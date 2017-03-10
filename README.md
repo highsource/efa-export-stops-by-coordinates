@@ -12,6 +12,7 @@ const minx = 5;
 const miny = 47;
 const maxx = 15;
 const maxy = 56;
+const maxPins = 1000;
 const pause = 250;
 const districtCodes = ["03459"];
 
@@ -23,6 +24,7 @@ Parameters:
 * `urlTemplate` - template of the `XML_COORD_REQUEST` or `XSLT_COORD_REQUEST` EFA endpoint. Placeholders `{minx}`, `{miny}`, `{maxx}`, `{maxy}` will be replaced with bounding box coordinates.
 * `minx`, `miny`, `maxx`, `maxy` - coordinates of the bounding box to start with.
 * `pause` - length of the pause between requests, in ms. `0` disables pausing.
+* `maxPins` - maximum amount of pins in the response. If the service returns more pins, we'll subquery with smaller quadrants.
 * `districtCodes` - array of [district codes](https://de.wikipedia.org/wiki/Liste_der_Landkreise_in_Deutschland) used to filter stops, may be omitted.
 
 The script starts from the provided bounding box and requests stops. If no stops are returned or if the result is too large (more that 1000 stops), the bounding box is divided into four smaller equal bounding boxes which are recursively queried in turn. This is repeated until the query produces adequate results or the bounding box gets too small (less that 0.25 in both dimensions).
