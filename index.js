@@ -19,7 +19,7 @@ const queryPins = function(urlTemplate, minx, miny, maxx, maxy, pause, maxPins) 
 		})
 		.then(response => {
 			const result = JSON.parse(response.body);
-			console.log("Got " + result.pins.length + " results from " + url + ".");
+			// console.log("Got " + result.pins.length + " results from " + url + ".");
 			const smallestAllowedBoundingBox = Math.max(maxx - minx, maxy - miny) <= EPSILON;
 			if (result.pins.length > maxPins) {
 				possiblyPausedSubqueryPins(resolve, reject, urlTemplate, minx, miny, maxx, maxy, pause, maxPins);
@@ -32,7 +32,7 @@ const queryPins = function(urlTemplate, minx, miny, maxx, maxy, pause, maxPins) 
 			}
 		})
 		.catch(error => {
-			console.log("Error querying " + url + ", requerying.", error);
+			// console.log("Error querying " + url + ", requerying.", error);
 			possiblyPausedSubqueryPins(resolve, reject, urlTemplate, minx, miny, maxx, maxy, pause, maxPins);
 		});
 	});
